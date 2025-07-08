@@ -59,11 +59,14 @@ def moving_median_extend_asymmetrical_core(value_array, n, max_window, use_sd, i
 
         for left_len in range(1, max_window):
             for right_len in range(1, max_window):
+                # Window Conditions
                 total_len_local = left_len + right_len + 1
+                # Window less than 90 day span
                 if total_len_local > 90:
                     continue
                 if min(left_len, right_len) > 30 or max(left_len, right_len) > 60:
                     continue
+                # Longer Side is less than 2x Shorter Side
                 ratio = max(left_len, right_len) / min(left_len, right_len)
                 if ratio > 2:
                     continue
@@ -75,12 +78,14 @@ def moving_median_extend_asymmetrical_core(value_array, n, max_window, use_sd, i
                 split_idx = i - window_start
                 valid_before = np.sum(valid_mask[:split_idx])
                 valid_after = np.sum(valid_mask[split_idx + 1:])
-
+                
+                # Equal Valid Observations on each side and minimum valid observations
                 if valid_before < ideal_valid_per_side or valid_after < ideal_valid_per_side or valid_before != valid_after:
                     continue
 
                 median_val, idx_diff, std_dev, mad, val_range = get_statistic(window_vals)
 
+                # Convergence -> Difference in adjacent medians < 0.5 * MAD
                 if np.isnan(prev_median):
                     prev_median = median_val
                     prev_mad = mad
@@ -157,20 +162,11 @@ def get_median_all_thres_asymmetrical(value_list, max_valid=11, initial_i=1, max
     one_clm.columns = [f"{col}" for col in one_clm.columns]
     return one_clm
 
-def get_median_change(df, get_value=True):
-    df = df.filter(regex=r"^Median_w\d+$")
-    change_cols = {}
-    for i in range(df.shape[1] - 1):
-        diff_col = f'diff_{i+1}_{i}'
-        change_cols[diff_col] = abs(df.iloc[:, i+1] - df.iloc[:, i])
-    change_df = pd.DataFrame(change_cols)
-    return df if get_value else change_df
-
 def iammf(value_list, max_window=61, max_valid=11, use_sd=True, initial_i=1, change_thres='MAD', threshold_scale=0.5):
     full_df = get_median_all_thres_asymmetrical(value_list, max_valid, initial_i, max_window, use_sd)
     return full_df
 
-
+# Fills in missing dates
 def fix_gap_image(df):
     df = df.sort_values('Date').reset_index(drop=True)
     new_rows = []
@@ -218,9 +214,6 @@ sub['Albedo_IAMMF'] = result["Median"]
 plt.figure(figsize=(11, 4))
 plt.plot(sub['Date'], sub['Albedo'], label="Original Albedo", color="dodgerblue", alpha=0.4)
 plt.plot(sub['Date'], sub['Albedo_IAMMF'], label="IAMMF Smoothed", color="orangered", alpha=0.8)
-
-#plt.plot(sub['Date'], sub['Albedo_IAMMF_interp'], label="IAMMF (Interpolated)", color="orangered", alpha=0.8)
-
 plt.xlabel("Date")
 plt.ylabel("Albedo")
 plt.legend()
