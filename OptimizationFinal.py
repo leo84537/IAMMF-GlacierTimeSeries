@@ -12,12 +12,6 @@ from numba import njit
 
 
 # In[17]:
-
-
-def range_diff(values):
-    values = [v for v in values if not pd.isna(v)]
-    return max(values) - min(values) if values else np.nan
-
 @njit
 def get_statistic(window_values):
     idx = np.arange(len(window_values))
